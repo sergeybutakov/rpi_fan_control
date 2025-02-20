@@ -3,14 +3,15 @@ import time
 import os
 
 # Настройки
-FAN_PIN = 14  # Номер GPIO
+FAN_PIN = 14  # Номер GPIO 
 TEMP_LOW = 50  # Температура, ниже которой вентилятор выключается
 TEMP_HIGH = 75  # Температура предела, выше которой вентилятор работает на 100%
-TEMP_MEDIUM = 70  # Температура, до которой вентилятор может использовать до 80% мощности
+TEMP_MEDIUM = 70  # Температура, до которой вентилятор может использовать до 70% мощности
 MAX_FAN_SPEED_BELOW_70 = 70  # Максимальная скорость вентилятора до 70°C
 COOLDOWN_TIME = 10  # Время удержания вентилятора на 100% после перегрева (в секундах)
 BLOW_TIME = 4  # Время продувки вентилятора при запуске (в секундах)
 PRE_BLOW_PAUSE = 2  # Время ожидания перед продувкой
+STARTUP_DELAY = 5  # Время задержки перед запуском вентилятора (в секундах), после выключенного режима, если температура начнет стабильно расти
 
 # Инициализация вентилятора через gpiozero
 fan = PWMOutputDevice(FAN_PIN, frequency=25)
@@ -56,6 +57,7 @@ try:
     fan_running = False
     last_high_temp_time = None
     cooldown_start_time = None
+    startup_delay_start = None  # Переменная для отслеживания момента, когда температура превысила 50°C
     fan_speed = 0  # Инициализируем fan_speed перед циклом
 
     initial_blow()  # Продувка вентилятора
@@ -67,16 +69,23 @@ try:
             fan.value = 0  # Выключаем вентилятор
             fan_running = False
             fan_speed = 0  # Устанавливаем fan_speed в 0
-        elif temp > TEMP_HIGH:
-            smooth_start(1)  # Запускаем вентилятор на 100%
-            fan_running = True
-            last_high_temp_time = time.time()
-            cooldown_start_time = None
-            fan_speed = 1  # 100%
-        elif temp > TEMP_MEDIUM:
-            fan_speed = map_range(temp, TEMP_MEDIUM, TEMP_HIGH, 0.8, 1)  # 80% - 100%
-        else:
-            fan_speed = map_range(temp, TEMP_LOW, TEMP_MEDIUM, 0.2, MAX_FAN_SPEED_BELOW_70 / 100)  # 20% - MAX
+            startup_delay_start = None  # Сбрасываем таймер задержки
+
+        elif temp >= TEMP_LOW:
+            if not fan_running and startup_delay_start is None:
+                startup_delay_start = time.time()  # Запоминаем момент, когда температура превысила 50°C
+            
+            # Если температура держится выше 50°C более 5 секунд, включаем вентилятор
+            if startup_delay_start and time.time() - startup_delay_start >= STARTUP_DELAY:
+                if temp > TEMP_HIGH:
+                    fan_speed = 1  # 100%
+                elif temp > TEMP_MEDIUM:
+                    fan_speed = map_range(temp, TEMP_MEDIUM, TEMP_HIGH, 0.8, 1)  # 80% - 100%
+                else:
+                    fan_speed = map_range(temp, TEMP_LOW, TEMP_MEDIUM, 0.2, MAX_FAN_SPEED_BELOW_70 / 100)  # 20% - MAX
+
+                smooth_start(fan_speed)
+                fan_running = True  # Теперь вентилятор работает
 
         # Если температура была выше предельной и снижается, удерживаем вентилятор на 100% еще указанное время
         if last_high_temp_time and not cooldown_start_time and temp < TEMP_HIGH:
@@ -89,10 +98,7 @@ try:
 
         notify_change(fan_speed, temp)
 
-        if not fan_running:
-            smooth_start(fan_speed)
-            fan_running = True
-        else:
+        if fan_running:
             fan.value = fan_speed  # Обычное обновление скорости
 
         time.sleep(1)  # Интервал обновления
