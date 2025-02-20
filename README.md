@@ -18,20 +18,20 @@ cd rpi_fan_control
 ```
 Установка
 ```
-sudo cp pifancontrol.service /lib/systemd/system/pifancontrol.service
+sudo cp fancontrol.service /lib/systemd/system/fancontrol.service
 sudo cp fan_control.py /usr/local/sbin/
-sudo chmod 644 /lib/systemd/system/pifancontrol.service
+sudo chmod 644 /lib/systemd/system/fancontrol.service
 sudo chmod +x /usr/local/sbin/fan_control.py
 sudo systemctl daemon-reload
-sudo systemctl enable pifancontrol.service
-sudo systemctl start pifancontrol.service
+sudo systemctl enable fancontrol.service
+sudo systemctl start fancontrol.service
 ```
 Удалить
 ```
-sudo systemctl stop pifancontrol.service
-sudo systemctl disable pifancontrol.service
+sudo systemctl stop fancontrol.service
+sudo systemctl disable fancontrol.service
 sudo systemctl daemon-reload
 sudo rm /usr/local/sbin/fan_control.py
-sudo rm /lib/systemd/system/pifancontrol.service
+sudo rm /lib/systemd/system/fancontrol.service
 ```
 
