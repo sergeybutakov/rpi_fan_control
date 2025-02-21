@@ -50,4 +50,6 @@ sudo systemctl daemon-reload
 sudo rm /usr/local/sbin/fan_control.py
 sudo rm /lib/systemd/system/fancontrol.service
 ```
+![Screenshot.](logs.png)
+
 
